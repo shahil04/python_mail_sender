@@ -4,15 +4,10 @@ const emailCountEl = document.getElementById("emailCount");
 const scrollDurationEl = document.getElementById("scrollDuration");
 const customDurationEl = document.getElementById("customDuration");
 const scrollStatusEl = document.getElementById("scrollStatus");
-const resumeInputEl = document.getElementById("resumeInput");
-const resumeDefaultStatusEl = document.getElementById("resumeDefaultStatus");
-const RESUME_DATABASE = "linkedin-email-scraper-defaults";
-const RESUME_STORE = "settings";
 
 const state = {
     scrapedEmails: [],
     recipients: [],
-    defaultResumeFile: null,
     autoScroll: {
         timerId: null,
         statusTimerId: null,
@@ -48,94 +43,6 @@ function getEmailsFromText(text) {
 function updateEmailCount() {
     const total = state.recipients.length || state.scrapedEmails.length;
     emailCountEl.textContent = `${total} email${total === 1 ? "" : "s"} found`;
-}
-
-function openResumeDatabase() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open(RESUME_DATABASE, 1);
-        request.onupgradeneeded = () => {
-            if (!request.result.objectStoreNames.contains(RESUME_STORE)) {
-                request.result.createObjectStore(RESUME_STORE);
-            }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
-}
-
-async function saveDefaultResume(file) {
-    const database = await openResumeDatabase();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(RESUME_STORE, "readwrite");
-        transaction.objectStore(RESUME_STORE).put({
-            name: file.name,
-            type: file.type || "application/pdf",
-            blob: file.slice(),
-        }, "resume");
-        transaction.oncomplete = () => {
-            database.close();
-            resolve();
-        };
-        transaction.onerror = () => {
-            database.close();
-            reject(transaction.error);
-        };
-        transaction.onabort = () => {
-            database.close();
-            reject(transaction.error);
-        };
-    });
-}
-
-async function loadDefaultResume() {
-    const database = await openResumeDatabase();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(RESUME_STORE, "readonly");
-        const request = transaction.objectStore(RESUME_STORE).get("resume");
-        request.onsuccess = () => {
-            const saved = request.result;
-            state.defaultResumeFile = saved
-                ? new File([saved.blob], saved.name, { type: saved.type })
-                : null;
-            database.close();
-            updateResumeDefaultStatus();
-            resolve(state.defaultResumeFile);
-        };
-        request.onerror = () => {
-            database.close();
-            reject(request.error);
-        };
-    });
-}
-
-async function clearDefaultResume() {
-    const database = await openResumeDatabase();
-    return new Promise((resolve, reject) => {
-        const transaction = database.transaction(RESUME_STORE, "readwrite");
-        transaction.objectStore(RESUME_STORE).delete("resume");
-        transaction.oncomplete = () => {
-            database.close();
-            state.defaultResumeFile = null;
-            updateResumeDefaultStatus();
-            resolve();
-        };
-        transaction.onerror = () => {
-            database.close();
-            reject(transaction.error);
-        };
-        transaction.onabort = () => {
-            database.close();
-            reject(transaction.error);
-        };
-    });
-}
-
-function updateResumeDefaultStatus() {
-    const selectedFile = resumeInputEl.files[0];
-    const file = selectedFile || state.defaultResumeFile;
-    resumeDefaultStatusEl.textContent = file
-        ? `${selectedFile ? "Selected" : "Default"} resume: ${file.name}`
-        : "No default resume saved";
 }
 
 function setScrapedEmails(emails) {
@@ -435,35 +342,6 @@ function stopAutoScroll() {
     });
 }
 
-function saveDefaultSettings() {
-    const resumeFile = resumeInputEl.files[0];
-
-    if (!resumeFile) {
-        setStatus("Choose a PDF file before saving the default resume.", true);
-        return;
-    }
-    if (resumeFile && !resumeFile.name.toLowerCase().endsWith(".pdf")) {
-        setStatus("Choose a PDF file for the saved default resume.", true);
-        return;
-    }
-
-    saveDefaultResume(resumeFile)
-        .then(loadDefaultResume)
-        .then(() => setStatus("Default resume PDF saved in extension storage."))
-        .catch((error) => setStatus(error.message, true));
-}
-
-async function clearSavedData() {
-    try {
-        await clearDefaultResume();
-        resumeInputEl.value = "";
-        updateResumeDefaultStatus();
-        setStatus("Default resume PDF cleared.");
-    } catch (error) {
-        setStatus(`Could not clear saved resume: ${error.message}`, true);
-    }
-}
-
 function addPastedEmails() {
     const list = document.getElementById("pasteEmails").value;
     const found = dedupeEmails(list.split(/[\s,;\n]+/).filter(Boolean));
@@ -493,11 +371,7 @@ function openHostedEmailSender() {
         return;
     }
 
-    const resumeFile = resumeInputEl.files[0] || state.defaultResumeFile;
     downloadBlob(new Blob([recipients.join("\n")], { type: "text/plain" }), "linkedin-emails.txt");
-    if (resumeFile) {
-        downloadBlob(resumeFile, resumeFile.name);
-    }
 
     chrome.tabs.create({ url: "https://pmsender.streamlit.app/" }, () => {
         if (chrome.runtime.lastError) {
@@ -505,9 +379,7 @@ function openHostedEmailSender() {
             return;
         }
 
-        setStatus(resumeFile
-            ? "Hosted sender opened. Upload linkedin-emails.txt and the downloaded PDF, enter your credentials, then send."
-            : "Hosted sender opened and recipient list downloaded. Upload it with your PDF, enter credentials, then send.");
+        setStatus("Hosted sender opened and recipient list downloaded. Upload the list and your PDF, enter credentials, then send.");
     });
 }
 
@@ -590,9 +462,6 @@ document.getElementById("downloadBtn").addEventListener("click", () => {
 document.getElementById("sendBtn").addEventListener("click", openHostedEmailSender);
 
 document.getElementById("pasteEmailsBtn").addEventListener("click", addPastedEmails);
-document.getElementById("saveDefaultBtn").addEventListener("click", saveDefaultSettings);
-document.getElementById("clearSavedBtn").addEventListener("click", clearSavedData);
-resumeInputEl.addEventListener("change", updateResumeDefaultStatus);
 
 document.getElementById("startScrollBtn").addEventListener("click", startAutoScroll);
 document.getElementById("pauseScrollBtn").addEventListener("click", pauseAutoScroll);
@@ -607,8 +476,5 @@ scrollDurationEl.addEventListener("change", () => {
     }
 });
 
-loadDefaultResume().catch(() => {
-    resumeDefaultStatusEl.textContent = "Could not load saved resume";
-});
 updateEmailCount();
 updateAutoScrollStatus();
