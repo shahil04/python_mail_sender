@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email Scraper</title>
+    <style>
+        body {
+            font-family: Arial;
+            width: 360px;
+            padding: 10px;
+            box-sizing: border-box;
+            background: #f7f9fc;
+            color: #1f1f1f;
+        }
+        h3 {
+            margin: 0 0 10px;
+            font-size: 18px;
+        }
+        .panel {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin: 8px 0 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        input, textarea, select, button {
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0 0 8px;
+        }
+        input, textarea, select {
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: white;
+        }
+        textarea {
+            min-height: 90px;
+            resize: vertical;
+        }
+        button {
+            padding: 8px 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+        }
+        button.secondary {
+            background: #475569;
+        }
+        button.danger {
+            background: #dc2626;
+        }
+        .status {
+            font-size: 12px;
+            margin: 0 0 8px;
+            color: #334155;
+        }
+        .small {
+            font-size: 11px;
+            color: #64748b;
+        }
+        .recipient-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .recipient-chip {
+            background: #e0e7ff;
+            color: #1e3a8a;
+            border-radius: 999px;
+            padding: 4px 8px;
+            font-size: 11px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .recipient-chip button {
+            width: auto;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            color: #1e3a8a;
+            font-weight: 700;
+        }
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+        .row button {
+            flex: 1;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h3>LinkedIn Email Scraper</h3>
+
+    <div class="panel">
+        <h4 style="margin: 0 0 8px;">Auto Scroll</h4>
+        <label for="scrollDuration">Auto Scroll Duration</label>
+        <select id="scrollDuration">
+            <option value="60000">1 minute</option>
+            <option value="120000">2 minutes</option>
+            <option value="180000">3 minutes</option>
+            <option value="300000">5 minutes</option>
+            <option value="600000">10 minutes</option>
+            <option value="custom">Custom</option>
+        </select>
+        <input id="customDuration" class="hidden" type="number" min="10" step="10" placeholder="Seconds" />
+        <div class="row">
+            <button id="startScrollBtn">Start</button>
+            <button id="pauseScrollBtn" class="secondary">Pause</button>
+            <button id="resumeScrollBtn" class="secondary">Resume</button>
+            <button id="stopScrollBtn" class="danger">Stop</button>
+        </div>
+        <div class="small" id="scrollStatus">Elapsed: 00:00 | Position: 0px</div>
+    </div>
+
+    <div class="panel">
+        <button id="scrapeBtn">Scrape Emails</button>
+        <div id="status" class="status">Ready</div>
+        <textarea id="results" placeholder="Emails will appear here..."></textarea>
+        <div class="row">
+            <button id="copyBtn" class="secondary">Copy</button>
+            <button id="downloadBtn" class="secondary">Download CSV</button>
+        </div>
+        <div class="small" id="emailCount">0 emails found</div>
+    </div>
+
+    <div class="panel">
+        <h4 style="margin: 0 0 8px;">Paste Emails</h4>
+        <textarea id="pasteEmails" placeholder="one@email.com, another@email.com"></textarea>
+        <button id="pasteEmailsBtn">Add Pasted Emails</button>
+    </div>
+
+    <div class="panel">
+        <h4 style="margin: 0 0 8px;">Default Resume PDF</h4>
+        <label for="resumeInput">Resume / document attachment</label>
+        <input id="resumeInput" type="file" accept=".pdf,application/pdf" />
+        <div id="resumeDefaultStatus" class="small">No default resume saved</div>
+
+        <button id="saveDefaultBtn" class="secondary">Save as Default</button>
+        <button id="clearSavedBtn" class="danger">Clear Saved Data</button>
+        <button id="sendBtn">Send Email</button>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
