@@ -104,25 +104,26 @@ if st.button("Send Emails"):
         st.write("Recipients:", recipients)
 
         resume_bytes = uploaded_resume_bytes or base64.b64decode(resume_base64)
-        suffix = os.path.splitext(uploaded_resume_name or resume_name)[1] or ".pdf"
-        with tempfile.NamedTemporaryFile(prefix="bulk-mail-resume-", suffix=suffix, delete=False) as temporary_file:
-            temporary_file.write(resume_bytes)
-            resume_path = temporary_file.name
+        safe_resume_name = os.path.basename(uploaded_resume_name or resume_name) or "resume.pdf"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            resume_path = os.path.join(temporary_directory, safe_resume_name)
+            with open(resume_path, "wb") as temporary_file:
+                temporary_file.write(resume_bytes)
 
-        mailer = yagmail.SMTP(user=sender, password=password)
-        progress = st.progress(0)
+            mailer = yagmail.SMTP(user=sender, password=password)
+            progress = st.progress(0)
 
-        for index, recipient in enumerate(recipients):
-            mailer.send(
-                to=recipient,
-                subject=subject,
-                contents=message,
-                attachments=resume_path,
-            )
-            progress.progress((index + 1) / len(recipients))
-            st.write(f"Sent to: {recipient}")
+            for index, recipient in enumerate(recipients):
+                mailer.send(
+                    to=recipient,
+                    subject=subject,
+                    contents=message,
+                    attachments=resume_path,
+                )
+                progress.progress((index + 1) / len(recipients))
+                st.write(f"Sent to: {recipient}")
 
-        st.success("All emails sent successfully!")
+            st.success("All emails sent successfully!")
 
     except Exception as error:
         st.error(f"Error: {str(error)}")
